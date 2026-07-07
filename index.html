@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>HF Designer — инженерный редактор профиля гидрофойла</title>
+<link rel="stylesheet" href="css/dark.css">
+<link rel="stylesheet" href="css/main.css">
+<link rel="stylesheet" href="css/panels.css">
+</head>
+<body>
+
+<header id="topbar">
+  <div class="brand">HF Designer <span class="version">v1.1 — B-Spline редактор</span></div>
+  <input type="text" id="projectNameInput" />
+  <button id="saveProjectBtn">Сохранить проект (.json)</button>
+  <label class="file-btn">Загрузить проект
+    <input type="file" id="loadProjectInput" accept=".json" hidden>
+  </label>
+  <select id="presetSelect"></select>
+</header>
+
+<div id="profileTabs" class="tabs"></div>
+
+<main id="layout">
+  <aside class="panel left">
+    <h2>Слои отображения</h2>
+    <div id="layersPanel"></div>
+    <h2>Быстрая генерация</h2>
+    <p class="hint">Пересоздаёт контрольные точки заново — ручные правки будут потеряны.</p>
+    <div id="quickGenPanel"></div>
+  </aside>
+
+  <section class="panel center">
+    <div class="viewport-toolbar">
+      <button id="navFit" title="Вписать в экран">Fit</button>
+      <button id="navCenter" title="Центрировать">Центр</button>
+      <button id="navZoomIn" title="Приблизить">+</button>
+      <button id="navZoomOut" title="Отдалить">−</button>
+      <span class="sep"></span>
+      <label>Хорда для DXF, мм <input type="number" id="chordMMInput" value="300"></label>
+      <button id="exportDatBtn">Экспорт .dat</button>
+      <button id="exportCsvBtn">Экспорт .csv</button>
+      <button id="exportSvgBtn">Экспорт .svg</button>
+      <button id="exportDxfBtn">Экспорт .dxf</button>
+      <label class="file-btn">Импорт .dat
+        <input type="file" id="importDatInput" accept=".dat,.txt" hidden>
+      </label>
+    </div>
+    <canvas id="viewport"></canvas>
+    <div class="canvas-hint">ЛКМ — выбрать/тащить точку · Shift+ЛКМ — мультивыбор · Двойной клик — добавить точку · Delete — удалить · Колесо — зум · СКМ — панорама</div>
+  </section>
+
+  <aside class="panel right">
+    <h2>Характеристики</h2>
+    <div id="statsPanel"></div>
+
+    <h2>Проверка (быстрая)</h2>
+    <div id="quickIssues"></div>
+
+    <h2>Проверка (полная)</h2>
+    <button id="runFullCheckBtn">Проверить профиль</button>
+    <div id="fullIssues"></div>
+  </aside>
+</main>
+
+<footer id="logPanel"></footer>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

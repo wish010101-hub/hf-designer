@@ -1,0 +1,79 @@
+{
+  "HF-6K-01": {
+    "thickness": 0.12,
+    "thickPos": 0.35,
+    "camber": 0.02,
+    "camberPos": 0.4,
+    "noseRadius": 0.5,
+    "upperShape": 1.0,
+    "lowerShape": 1.0,
+    "teThickness": 0.002,
+    "smoothness": 0.5
+  },
+  "HF-6K-02": {
+    "thickness": 0.11,
+    "thickPos": 0.33,
+    "camber": 0.018,
+    "camberPos": 0.42,
+    "noseRadius": 0.45,
+    "upperShape": 1.05,
+    "lowerShape": 0.95,
+    "teThickness": 0.0018,
+    "smoothness": 0.5
+  },
+  "HF-Speed": {
+    "thickness": 0.09,
+    "thickPos": 0.3,
+    "camber": 0.012,
+    "camberPos": 0.45,
+    "noseRadius": 0.35,
+    "upperShape": 0.9,
+    "lowerShape": 1.0,
+    "teThickness": 0.0015,
+    "smoothness": 0.6
+  },
+  "HF-Lift": {
+    "thickness": 0.13,
+    "thickPos": 0.4,
+    "camber": 0.035,
+    "camberPos": 0.38,
+    "noseRadius": 0.7,
+    "upperShape": 1.2,
+    "lowerShape": 0.9,
+    "teThickness": 0.002,
+    "smoothness": 0.5
+  },
+  "HF-Race": {
+    "thickness": 0.08,
+    "thickPos": 0.28,
+    "camber": 0.01,
+    "camberPos": 0.48,
+    "noseRadius": 0.3,
+    "upperShape": 0.85,
+    "lowerShape": 0.95,
+    "teThickness": 0.0012,
+    "smoothness": 0.65
+  },
+  "HF-SUP": {
+    "thickness": 0.14,
+    "thickPos": 0.38,
+    "camber": 0.03,
+    "camberPos": 0.4,
+    "noseRadius": 0.8,
+    "upperShape": 1.1,
+    "lowerShape": 1.0,
+    "teThickness": 0.0025,
+    "smoothness": 0.55
+  },
+  "HF-Wing": {
+    "thickness": 0.1,
+    "thickPos": 0.32,
+    "camber": 0.022,
+    "camberPos": 0.4,
+    "noseRadius": 0.5,
+    "upperShape": 1.0,
+    "lowerShape": 1.0,
+    "teThickness": 0.0018,
+    "smoothness": 0.5
+  }
+}

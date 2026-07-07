@@ -1,0 +1,20 @@
+/* dark.css — цветовая схема, вдохновлённая тёмной темой Fusion 360 */
+
+:root {
+  --bg-0: #1a1b1e;
+  --bg-1: #232428;
+  --bg-2: #2b2d31;
+  --bg-3: #33353b;
+  --border: #3a3c42;
+  --text: #c9cbd1;
+  --text-dim: #86888f;
+  --accent: #3fa9f5;
+  --accent-2: #c98500;
+  --danger: #ff5a5a;
+  --ok: #7bd88f;
+}
+
+html, body {
+  background: var(--bg-0);
+  color: var(--text);
+}
