@@ -215,4 +215,26 @@ export class ProfileRenderer {
       ctx.stroke();
     }
   }
+
+  // Режим Compare (v1.2): два профиля на одном виде — A зелёным, B синим.
+  // Переиспользует существующие приватные методы отрисовки без изменений.
+  drawCompare(profileA, profileB) {
+    this._resize();
+    const ctx = this.ctx;
+    const w = this.canvas.clientWidth;
+    const h = this.canvas.clientHeight;
+    const ts = (p) => this.viewport.toScreen(p);
+
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = '#1e1f22';
+    ctx.fillRect(0, 0, w, h);
+
+    if (this.layers.grid) this._drawGrid(ts, w, h);
+    if (this.layers.axes) this._drawAxes(ts, w, h);
+
+    this._drawCurve(profileA.upper, '#4caf50', 2, [], ts);
+    this._drawCurve(profileA.lower, '#4caf50', 2, [], ts);
+    this._drawCurve(profileB.upper, '#3fa9f5', 2, [], ts);
+    this._drawCurve(profileB.lower, '#3fa9f5', 2, [], ts);
+  }
 }

@@ -102,3 +102,37 @@ export function pathLength(points) {
   }
   return len;
 }
+
+// Сравнение двух профилей (режим Compare, v1.2). Предполагает одинаковую
+// сетку x (все профили в приложении строятся с одним resolution) —
+// если длины отличаются, сравнение идёт по min(длина A, длина B).
+export function compareProfiles(a, b) {
+  const n = Math.min(a.upper.length, b.upper.length);
+  let maxThicknessDiff = 0, maxThicknessDiffX = 0;
+  let maxCamberDiff = 0, maxCamberDiffX = 0;
+  let maxDeviation = 0, maxDeviationX = 0;
+
+  for (let i = 0; i < n; i++) {
+    const dT = (a.upper[i].y - a.lower[i].y) - (b.upper[i].y - b.lower[i].y);
+    if (Math.abs(dT) > Math.abs(maxThicknessDiff)) {
+      maxThicknessDiff = dT;
+      maxThicknessDiffX = a.upper[i].x;
+    }
+    const dC = a.camber[i].y - b.camber[i].y;
+    if (Math.abs(dC) > Math.abs(maxCamberDiff)) {
+      maxCamberDiff = dC;
+      maxCamberDiffX = a.camber[i].x;
+    }
+    const dev = Math.max(Math.abs(a.upper[i].y - b.upper[i].y), Math.abs(a.lower[i].y - b.lower[i].y));
+    if (dev > maxDeviation) {
+      maxDeviation = dev;
+      maxDeviationX = a.upper[i].x;
+    }
+  }
+
+  const thicknessPercent = a.stats.maxThickness.value > 0
+    ? (Math.abs(a.stats.maxThickness.value - b.stats.maxThickness.value) / a.stats.maxThickness.value) * 100
+    : 0;
+
+  return { maxThicknessDiff, maxThicknessDiffX, maxCamberDiff, maxCamberDiffX, maxDeviation, maxDeviationX, thicknessPercent };
+}

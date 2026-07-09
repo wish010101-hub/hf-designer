@@ -8,6 +8,7 @@ import { Viewport2D } from './viewport.js';
 import { ProfileInteraction } from './interaction.js';
 import { HFProfile, PARAM_DEFS, DEFAULT_PARAMS } from './profile.js';
 import { quickValidate } from './validation.js';
+import { compareProfiles } from './geometry.js';
 import { attachProjectFeatures } from './project-ui.js';
 
 const LAYER_TOGGLES = [
@@ -31,6 +32,9 @@ export class HFDesignerUI {
       tip: new HFProfile('Tip'),
     };
     this.activeKey = 'root';
+    this.compareMode = false;
+    this.compareKeyA = 'root';
+    this.compareKeyB = 'tip';
 
     this.canvas = root.querySelector('#viewport');
     this.viewport = new Viewport2D(this.canvas);
@@ -46,6 +50,7 @@ export class HFDesignerUI {
     this._buildLayerToggles();
     this._buildQuickGenerate();
     this._buildNavButtons();
+    this._buildComparePanel();
     attachProjectFeatures(this);
 
     this.viewport.fitToScreen();
@@ -59,6 +64,10 @@ export class HFDesignerUI {
   }
 
   refresh() {
+    if (this.compareMode) {
+      this._refreshCompare();
+      return;
+    }
     const issues = quickValidate(this.activeProfile);
     this._lastIssues = issues;
     this.renderer.draw(this.activeProfile, this.interaction.selected, issues);
@@ -178,6 +187,67 @@ export class HFDesignerUI {
       this.viewport.zoomAt(this.canvas.clientWidth / 2, this.canvas.clientHeight / 2, 1 / 1.2);
       this.refresh();
     });
+  }
+
+  // Режим Compare (v1.2): выбор двух профилей (Root/Mid/Tip) и одновременный
+  // просмотр. Использует существующий renderer.drawCompare() и
+  // geometry.compareProfiles() — новой логики отрисовки/геометрии здесь нет.
+  _buildComparePanel() {
+    const panel = this.root.querySelector('#comparePanel');
+    const makeSelect = (id, selected) => {
+      const select = document.createElement('select');
+      select.id = id;
+      for (const key of Object.keys(this.profiles)) {
+        const opt = document.createElement('option');
+        opt.value = key;
+        opt.textContent = this.profiles[key].name;
+        if (key === selected) opt.selected = true;
+        select.appendChild(opt);
+      }
+      return select;
+    };
+
+    const rowA = document.createElement('div');
+    rowA.className = 'field';
+    rowA.innerHTML = '<label>Профиль A (зелёный)</label>';
+    const selectA = makeSelect('compareSelectA', this.compareKeyA);
+    rowA.appendChild(selectA);
+
+    const rowB = document.createElement('div');
+    rowB.className = 'field';
+    rowB.innerHTML = '<label>Профиль B (синий)</label>';
+    const selectB = makeSelect('compareSelectB', this.compareKeyB);
+    rowB.appendChild(selectB);
+
+    panel.appendChild(rowA);
+    panel.appendChild(rowB);
+
+    selectA.addEventListener('change', () => { this.compareKeyA = selectA.value; this.refresh(); });
+    selectB.addEventListener('change', () => { this.compareKeyB = selectB.value; this.refresh(); });
+
+    this.root.querySelector('#compareToggle').addEventListener('change', (e) => {
+      this.compareMode = e.target.checked;
+      this.log(this.compareMode ? 'Режим Compare включён' : 'Режим Compare выключен');
+      this.refresh();
+    });
+  }
+
+  _refreshCompare() {
+    const a = this.profiles[this.compareKeyA];
+    const b = this.profiles[this.compareKeyB];
+    this.renderer.drawCompare(a, b);
+    this._renderCompareResults(a, b);
+  }
+
+  _renderCompareResults(a, b) {
+    const d = compareProfiles(a, b);
+    const el = this.root.querySelector('#compareResults');
+    el.innerHTML = `
+      <div class="stat-row"><span>Δ толщины (макс.)</span><b>${(d.maxThicknessDiff * 100).toFixed(2)}% @ x=${d.maxThicknessDiffX.toFixed(2)}</b></div>
+      <div class="stat-row"><span>Δ камбера (макс.)</span><b>${(d.maxCamberDiff * 100).toFixed(2)}% @ x=${d.maxCamberDiffX.toFixed(2)}</b></div>
+      <div class="stat-row"><span>Макс. отклонение профилей</span><b>${(d.maxDeviation * 100).toFixed(2)}% хорды @ x=${d.maxDeviationX.toFixed(2)}</b></div>
+      <div class="stat-row"><span>Разница толщины</span><b>${d.thicknessPercent.toFixed(1)}%</b></div>
+    `;
   }
 
   _renderQuickIssues(issues) {
