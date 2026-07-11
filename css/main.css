@@ -26,6 +26,18 @@ html, body {
   height: calc(100vh - 48px - 150px - 38px);
 }
 
+.wing-builder {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  height: calc(100vh - 48px - 150px - 38px);
+}
+.wing-builder .panel {
+  overflow-y: auto;
+}
+.wb-results-panel {
+  padding: 16px;
+}
+
 .panel {
   overflow-y: auto;
   border-right: 1px solid var(--border);

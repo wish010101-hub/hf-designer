@@ -270,10 +270,21 @@ export class HFDesignerUI {
     `;
   }
 
-  loadPreset(params, presetName) {
-    this.activeProfile.generateFromParams(params);
+  loadPreset(preset, presetName) {
+    const isFixedProfile = Array.isArray(preset.upperCP) && Array.isArray(preset.lowerCP);
+    try {
+      if (isFixedProfile) {
+        this.activeProfile.loadControlPoints(preset.upperCP, preset.lowerCP);
+        this.log(`Профиль «${this.activeProfile.name}»: применён Fixed Profile пресет «${presetName}» (готовые контрольные точки, генератор не запускался)`);
+      } else {
+        this.activeProfile.generateFromParams(preset);
+        this.log(`Профиль «${this.activeProfile.name}»: применён пресет «${presetName}»`);
+      }
+    } catch (err) {
+      this.log(`Ошибка применения пресета «${presetName}»: ${err.message}`);
+      return;
+    }
     this.interaction.selected.clear();
     this.refresh();
-    this.log(`Профиль «${this.activeProfile.name}»: применён пресет «${presetName}»`);
   }
 }

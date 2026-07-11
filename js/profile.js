@@ -32,51 +32,75 @@ export const PARAM_DEFS = [
   { key: 'smoothness', label: 'Плавность кривизны', min: 0, max: 1, step: 0.01, pct: false },
 ];
 
+// HF-U12 — универсальный стартовый профиль для eFoil-крыльев.
+// Раньше здесь были условные "стартовые" значения без физического
+// обоснования — это и приводило к профилям-"ножам" (номинал 12% толщины
+// на деле давал ~6.6% реальной толщины, см. обсуждение калибровки ниже).
+// Теперь это осознанно выбранный универсальный профиль:
+// 12% толщины, пик на 36.5% хорды, 1.8% камбера, увеличенный радиус
+// носика, тонкая, но не нулевая задняя кромка.
 export const DEFAULT_PARAMS = {
-  thickness: 0.12,
-  thickPos: 0.35,
-  camber: 0.02,
+  thickness: 0.12,     // 12% — стандарт для универсального eFoil-крыла
+  thickPos: 0.365,      // 36.5% хорды (середина рекомендованных 35–38%)
+  camber: 0.018,        // 1.8% (середина рекомендованных 1.5–2%)
   camberPos: 0.4,
-  noseRadius: 0.5,
+  noseRadius: 0.85,     // увеличенный радиус носика (было 0.5)
   upperShape: 1.0,
   lowerShape: 1.0,
-  teThickness: 0.002,
+  // ~0.4мм в реальном масштабе при референсной хорде ~300мм (0.0013×300≈0.4мм) —
+  // тонкая, но не идеально острая кромка, как и просили.
+  teThickness: 0.0013,
   smoothness: 0.5,
 };
 
 const MIN_CP = 4; // минимум точек для кубического сплайна (degree 3 => 4 точки)
 const STATIONS_X = [0, 0.12, 0.35, 0.7, 1]; // фиксированная сетка для генерации начальной формы
 
-// Вспомогательный генератор НАЧАЛЬНОЙ формы по скалярным параметрам —
-// внутренне считает камбер+полутолщину по старой схеме только для того,
-// чтобы получить стартовые (x,y) точки для upperCP/lowerCP. После этого
-// параметры больше не используются — точки живут своей жизнью.
-function seedSurfaceControlPoints(params) {
+// ГЛАВНОЕ ИСПРАВЛЕНИЕ (после отчёта пользователя "толщина 6.6% вместо 12%"):
+// здесь ДВА слоя B-сплайн-аппроксимации, оба занижают пик:
+//   слой 1 — камбер/полутолщина строятся как B-сплайн по 5 контрольным
+//            точкам (внутри этой функции);
+//   слой 2 — результат слоя 1 сэмплируется всего в 5 точках (STATIONS_X)
+//            и превращается в НОВЫЙ B-сплайн внутри HFProfile.rebuild().
+// Калибровка только слоя 1 (как было в первой попытке) не спасает —
+// слой 2 просаживает пик ещё раз. Поэтому ниже калибровка идёт по
+// РЕАЛЬНОМУ результату двух слоёв сразу (строим upperCP/lowerCP так же,
+// как это в итоге сделает rebuild(), и меряем то же самое, что окажется
+// в profile.stats). Толщина и камбер калибруются независимо: в разнице
+// upper−lower камбер сокращается математически точно, так что порядок
+// калибровки (сначала камбер, потом толщина) не влияет на результат.
+
+function buildCamberCP(params, scale) {
   const p = clamp(params.camberPos, 0.05, 0.95);
-  const camberCP = [
+  return [
     { x: 0, y: 0 },
-    { x: p * 0.5, y: params.camber * 0.7 },
-    { x: p, y: params.camber },
-    { x: p + (1 - p) * 0.5, y: params.camber * 0.35 },
+    { x: p * 0.5, y: params.camber * 0.7 * scale },
+    { x: p, y: params.camber * scale },
+    { x: p + (1 - p) * 0.5, y: params.camber * 0.35 * scale },
     { x: 1, y: 0 },
   ];
-  const halfCP = (shapeFactor) => {
-    const half = params.thickness / 2;
-    const noseX = 0.04 + 0.06 * clamp(params.smoothness, 0, 1);
-    const noseY = half * clamp(params.noseRadius, 0, 1) * 0.55;
-    const tp = clamp(params.thickPos, noseX + 0.05, 0.9);
-    return [
-      { x: 0, y: 0 },
-      { x: noseX, y: noseY },
-      { x: tp, y: half * shapeFactor },
-      { x: tp + (1 - tp) * 0.6, y: half * shapeFactor * 0.45 + (params.teThickness / 2) * 0.5 },
-      { x: 1, y: params.teThickness / 2 },
-    ];
-  };
+}
 
-  const camberSpline = new BSpline(camberCP, 3);
-  const upperHalfSpline = new BSpline(halfCP(params.upperShape), 3);
-  const lowerHalfSpline = new BSpline(halfCP(params.lowerShape), 3);
+function buildHalfCP(params, shapeFactor, scale) {
+  const half = params.thickness / 2;
+  const noseX = 0.04 + 0.06 * clamp(params.smoothness, 0, 1);
+  const tp = clamp(params.thickPos, noseX + 0.05, 0.9);
+  const teHalf = params.teThickness / 2;
+  return [
+    { x: 0, y: 0 },
+    { x: noseX, y: half * clamp(params.noseRadius, 0, 1) * 0.55 * scale },
+    { x: tp, y: half * shapeFactor * scale },
+    { x: tp + (1 - tp) * 0.6, y: (half * shapeFactor * 0.45 + teHalf * 0.5) * scale },
+    { x: 1, y: teHalf }, // задняя кромка — фиксированное граничное условие, не масштабируется
+  ];
+}
+
+// Строит upperCP/lowerCP ТОЧНО так же, как основной код ниже — нужно для
+// калибровки "вслепую" (прогнать оба слоя и посмотреть, что получится).
+function buildLayeredCP(params, camberScale, thicknessScale) {
+  const camberSpline = new BSpline(buildCamberCP(params, camberScale), 3);
+  const upperHalfSpline = new BSpline(buildHalfCP(params, params.upperShape, thicknessScale), 3);
+  const lowerHalfSpline = new BSpline(buildHalfCP(params, params.lowerShape, thicknessScale), 3);
 
   const upperCP = STATIONS_X.map((x) => ({
     x,
@@ -87,6 +111,46 @@ function seedSurfaceControlPoints(params) {
     y: camberSpline.evaluateAtX(x).y - Math.max(0, lowerHalfSpline.evaluateAtX(x).y),
   }));
   return { upperCP, lowerCP };
+}
+
+// Измеряет итоговую (после слоя 2, т.е. ровно как в profile.stats) толщину
+// и камбер — строит те же B-сплайны, что и HFProfile.rebuild().
+function measureLayered(upperCP, lowerCP) {
+  const upperSpline = new BSpline(upperCP, Math.min(3, upperCP.length - 1));
+  const lowerSpline = new BSpline(lowerCP, Math.min(3, lowerCP.length - 1));
+  let maxThicknessVal = -Infinity;
+  let maxCamberAbs = 0;
+  let maxCamberVal = 0;
+  for (let i = 0; i <= 200; i++) {
+    const x = i / 200;
+    const u = upperSpline.evaluateAtX(x).y;
+    const l = lowerSpline.evaluateAtX(x).y;
+    const t = u - l;
+    if (t > maxThicknessVal) maxThicknessVal = t;
+    const c = (u + l) / 2;
+    if (Math.abs(c) > maxCamberAbs) { maxCamberAbs = Math.abs(c); maxCamberVal = c; }
+  }
+  return { thickness: maxThicknessVal, camber: maxCamberVal };
+}
+
+function seedSurfaceControlPoints(params) {
+  let camberScale = 1;
+  for (let i = 0; i < 3; i++) {
+    const { upperCP, lowerCP } = buildLayeredCP(params, camberScale, 1);
+    const achieved = measureLayered(upperCP, lowerCP).camber;
+    if (Math.abs(achieved) < 1e-9) break;
+    camberScale *= params.camber / achieved;
+  }
+
+  let thicknessScale = 1;
+  for (let i = 0; i < 3; i++) {
+    const { upperCP, lowerCP } = buildLayeredCP(params, camberScale, thicknessScale);
+    const achieved = measureLayered(upperCP, lowerCP).thickness;
+    if (Math.abs(achieved) < 1e-9) break;
+    thicknessScale *= params.thickness / achieved;
+  }
+
+  return buildLayeredCP(params, camberScale, thicknessScale);
 }
 
 export class HFProfile {
@@ -137,6 +201,21 @@ export class HFProfile {
     cp.splice(index, 1);
     this.rebuild();
     return true;
+  }
+
+  // Для пресетов "Fixed Profile" (готовые контрольные точки вместо
+  // параметрического генератора). Копирует точки (не берёт ссылку на
+  // массив пресета), чтобы дальнейшее редактирование мышью не мутировало
+  // сам объект пресета при повторном выборе. Дальше профиль работает
+  // абсолютно так же, как сгенерированный из параметров — редактирование,
+  // экспорт, сохранение проекта не отличают, откуда взялись точки.
+  loadControlPoints(upperCP, lowerCP) {
+    if (upperCP.length < MIN_CP || lowerCP.length < MIN_CP) {
+      throw new Error(`Fixed Profile должен содержать минимум ${MIN_CP} точек на кривую`);
+    }
+    this.upperCP = upperCP.map((p) => ({ x: p.x, y: p.y }));
+    this.lowerCP = lowerCP.map((p) => ({ x: p.x, y: p.y }));
+    this.rebuild();
   }
 
   rebuild() {
